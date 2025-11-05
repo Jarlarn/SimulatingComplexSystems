@@ -1,6 +1,12 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
+import os
+
+
+output_dir = "Question1"
+os.makedirs(output_dir, exist_ok=True)
+
 
 # Simulation parameters
 N = 100
@@ -9,7 +15,8 @@ MASS = 1.0
 EPSILON = 1.0
 TIME_STEP = 0.001
 VELOCITY = 1.0
-L = 10.0 * SIGMA  # Box size
+# L = 10.0 * SIGMA  # Box size
+L = 16.0 * SIGMA
 box_min = -L / 2
 box_max = L / 2
 
@@ -19,7 +26,6 @@ num_particles_y = num_particles_x
 assert num_particles_x * num_particles_y == N, "N must be a perfect square."
 spacing = L / (num_particles_x - 1)
 positions = np.zeros((N, 2))
-# Center the box at (0,0) and spread particles from -L/2 to L/2
 for row in range(num_particles_x):
     for column in range(num_particles_y):
         idx = row * num_particles_y + column
@@ -74,6 +80,36 @@ def compute_forces(positions):
     return forces
 
 
+# Plot initial configuration
+plt.figure(figsize=(6, 6))
+ax = plt.gca()
+for i in range(N):
+    circle = patches.Circle(
+        (positions[i, 0], positions[i, 1]),
+        SIGMA / 2,
+        edgecolor="orange",
+        facecolor="orange",
+        linewidth=1.5,
+        alpha=0.5,  # Slightly transparent
+    )
+    ax.add_patch(circle)
+plt.scatter(
+    positions[:, 0], positions[:, 1], s=30, color="blue", zorder=2
+)  # Blue dots on top
+plt.title("Initial Configuration at t = 0")
+plt.xlim(box_min, box_max)
+plt.xlim(box_min, box_max)
+ax.set_xlim(box_min, box_max)
+ax.set_ylim(box_min, box_max)
+ax.set_aspect("equal")
+plt.locator_params(axis="both", nbins=L)
+plt.xlabel("x (sigma)")
+plt.ylabel("y (sigma)")
+plt.grid(True, which="both", linestyle="-", color="gray", alpha=0.3)
+plt.savefig(f"{output_dir}/initial_configuration.png", dpi=600)
+plt.show()
+
+
 # Leapfrog integration
 num_steps = 10000
 positions = positions.copy()
@@ -117,32 +153,6 @@ for n in range(S):
         diffs = central_traj[n:] - central_traj[:-n]
         msd[n] = np.mean(np.sum(diffs**2, axis=1))
 
-# Plot initial configuration
-plt.figure(figsize=(6, 6))
-ax = plt.gca()
-for i in range(N):
-    circle = patches.Circle(
-        (positions[i, 0], positions[i, 1]),
-        SIGMA / 2,
-        edgecolor="orange",
-        facecolor="orange",
-        linewidth=1.5,
-        alpha=0.5,  # Slightly transparent
-    )
-    ax.add_patch(circle)
-plt.scatter(
-    positions[:, 0], positions[:, 1], s=30, color="blue", zorder=2
-)  # Blue dots on top
-plt.title("Initial Configuration at t = 0")
-plt.xlim(-5, 5)
-plt.ylim(-5, 5)
-ax.set_aspect("equal")
-plt.xticks(np.arange(-5, 6, 1))
-plt.yticks(np.arange(-5, 6, 1))
-plt.xlabel("x (sigma)")
-plt.ylabel("y (sigma)")
-plt.grid(True, which="both", linestyle="-", color="gray", alpha=0.3)
-plt.show()
 
 # Plot (A) final configuration
 plt.figure(figsize=(6, 6))
@@ -161,22 +171,28 @@ plt.scatter(
     positions[:, 0], positions[:, 1], s=30, color="blue", zorder=2
 )  # Blue dots on top
 plt.title("Final Configuration at t = Ttot")
-plt.xlim(-5, 5)
-plt.ylim(-5, 5)
+plt.xlim(box_min, box_max)
+plt.xlim(box_min, box_max)
+ax.set_xlim(box_min, box_max)
+ax.set_ylim(box_min, box_max)
+plt.locator_params(axis="both", nbins=L)
 ax.set_aspect("equal")
 plt.xlabel("x")
 plt.ylabel("y")
+plt.savefig(f"{output_dir}/final_configuration.png", dpi=600)
 plt.show()
+
 
 # Plot (B) trajectory and MSD of central particle
 plt.figure(figsize=(6, 6))
 plt.plot(central_traj[:, 0], central_traj[:, 1], label="Trajectory")
 plt.title("Trajectory of Central Particle")
-plt.xlim(0, L)
-plt.ylim(0, L)
+plt.xlim(box_min, box_max)
+plt.xlim(box_min, box_max)
 plt.xlabel("x")
 plt.ylabel("y")
 plt.legend()
+plt.savefig(f"{output_dir}/trajectory.png", dpi=600)
 plt.show()
 
 plt.figure()
@@ -184,4 +200,5 @@ plt.plot(np.arange(S) * TIME_STEP, msd)
 plt.title("Mean Square Displacement (MSD) of Central Particle")
 plt.xlabel("Time")
 plt.ylabel("MSD")
+plt.savefig(f"{output_dir}/msd.png", dpi=600)
 plt.show()
