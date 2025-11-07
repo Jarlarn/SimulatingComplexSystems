@@ -7,25 +7,10 @@ H = 0
 J = 1
 KB = 1
 T = 2.3
-S1, S2 = 1, -1
+S1, S2 = 1, 1
 dhalf = 3
 dhalf_values = [3, 5, 7, 10]
 steps = 6000
-
-# def calculate_energy(lattice):
-#     # Periodic boundary conditions using np.roll
-#     right = np.roll(lattice, -1, axis=1)
-#     left = np.roll(lattice, 1, axis=1)
-#     up = np.roll(lattice, -1, axis=0)
-#     down = np.roll(lattice, 1, axis=0)
-
-#     # Sum over all neighbors
-#     neighbor_sum = right + left + up + down
-
-#     # Total energy
-#     e_tot = -J / 2 * (1 / N**2) * np.sum(lattice * neighbor_sum)
-#     return e_tot
-
 
 def calculate_energy(lattice):
     energy = 0.0
