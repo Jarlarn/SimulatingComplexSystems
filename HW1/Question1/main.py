@@ -15,12 +15,12 @@ MASS = 1.0
 EPSILON = 1.0
 TIME_STEP = 0.001
 VELOCITY = 1.0
-# L = 10.0 * SIGMA  # Box size
-L = 16.0 * SIGMA
+L = 10.0 * SIGMA  # Box size
+# L = 16.0 * SIGMA
 box_min = -L / 2
 box_max = L / 2
 
-# Set up initial positions on a 10x10 lattice
+# Set up initial positions on a LxL lattice
 num_particles_x = int(np.sqrt(N))
 num_particles_y = num_particles_x
 assert num_particles_x * num_particles_y == N, "N must be a perfect square."
@@ -29,18 +29,14 @@ positions = np.zeros((N, 2))
 for row in range(num_particles_x):
     for column in range(num_particles_y):
         idx = row * num_particles_y + column
-        positions[idx, 0] = box_min + row * spacing
-        positions[idx, 1] = box_min + column * spacing
+        positions[idx, 0] = box_min + column * spacing
+        positions[idx, 1] = box_min + row * spacing
 
 # Assign random velocities of magnitude VELOCITY
 angles = np.random.uniform(0, 2 * np.pi, N)
 velocities = np.zeros((N, 2))
 velocities[:, 0] = VELOCITY * np.cos(angles)
 velocities[:, 1] = VELOCITY * np.sin(angles)
-
-# For later: store trajectories for MSD
-trajectories = np.zeros((N, 10000, 2))
-trajectories[:, 0, :] = positions
 
 
 def lennard_jones_force(pos1, pos2):
@@ -61,16 +57,17 @@ def reflect_boundary(pos, vel):
     # Reflecting boundaries for a box from box_min to box_max
     for i in range(2):
         if pos[i] < box_min:
-            pos[i] = 2 * box_min - pos[i]
+            delta = box_min - pos[i]
+            pos[i] = box_min + delta
             vel[i] = -vel[i]
         elif pos[i] > box_max:
-            pos[i] = 2 * box_max - pos[i]
+            delta = pos[i] - box_max
+            pos[i] = box_max - delta
             vel[i] = -vel[i]
     return pos, vel
 
 
 def compute_forces(positions):
-    N = positions.shape[0]
     forces = np.zeros_like(positions)
     for i in range(N):
         for j in range(i + 1, N):
@@ -117,20 +114,18 @@ velocities = velocities.copy()
 trajectories = np.zeros((N, num_steps, 2))
 trajectories[:, 0, :] = positions
 
-# Initial half-step velocity update
-forces = compute_forces(positions)
-velocities += 0.5 * TIME_STEP * forces / MASS
 
 for step in range(1, num_steps):
-    # Update positions
-    positions += TIME_STEP * velocities
-    # Reflect boundaries
+    forces = compute_forces(positions)
+    # Velocity Verlet position update
+    positions += velocities * TIME_STEP + 0.5 * forces / MASS * TIME_STEP**2
+    # Compute new forces at updated positions
+    new_forces = compute_forces(positions)
+    # Velocity Verlet velocity update
+    velocities += 0.5 * (forces + new_forces) / MASS * TIME_STEP
+    # Reflections
     for i in range(N):
         positions[i], velocities[i] = reflect_boundary(positions[i], velocities[i])
-    # Compute forces
-    forces = compute_forces(positions)
-    # Update velocities
-    velocities += TIME_STEP * forces / MASS
     # Store trajectory
     trajectories[:, step, :] = positions
     if step % 100 == 0:
@@ -164,12 +159,10 @@ for i in range(N):
         edgecolor="orange",
         facecolor="orange",
         linewidth=1.5,
-        alpha=0.5,  # Slightly transparent
+        alpha=0.5,
     )
     ax.add_patch(circle)
-plt.scatter(
-    positions[:, 0], positions[:, 1], s=30, color="blue", zorder=2
-)  # Blue dots on top
+plt.scatter(positions[:, 0], positions[:, 1], s=30, color="blue", zorder=2)
 plt.title("Final Configuration at t = Ttot")
 plt.xlim(box_min, box_max)
 plt.xlim(box_min, box_max)
