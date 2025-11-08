@@ -12,6 +12,7 @@ dhalf = 3
 dhalf_values = [3, 5, 7, 10]
 steps = 6000
 
+
 def calculate_energy(lattice):
     energy = 0.0
     for i in range(N):
@@ -82,7 +83,7 @@ for idx, dhalf in enumerate(dhalf_values):
     # Plot lattice in its own figure
     ax_lattice = lattice_axes[idx]
     ax_lattice.imshow(lattice, cmap="bwr", vmin=-1, vmax=1)
-    ax_lattice.set_title(f"dhalf = {dhalf}")
+    ax_lattice.set_title(f"dhalf = {dhalf}, S1 = {S1}, S2 = {S2}")
     ax_lattice.axis("off")
 
     # Plot etot history in its own figure
@@ -98,7 +99,7 @@ for idx, dhalf in enumerate(dhalf_values):
     ax_etot.set_xlabel("Step")
     ax_etot.set_ylabel("etot")
     ax_etot.legend()
-    ax_etot.set_title(f"etot vs step (dhalf={dhalf})")
+    ax_etot.set_title(f"etot vs step (dhalf={dhalf}, S1={S1}, S2={S2})")
 
 lattice_fig.tight_layout()
 lattice_fig.savefig("Question2_lattices", dpi=600)
