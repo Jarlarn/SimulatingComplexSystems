@@ -65,15 +65,14 @@ inv_N = []
 for l in sizes:
     alphas = []
     plt.figure(figsize=(7, 5))
+    lower_bound = 0.01
+    upper_bound = 0.2
     for rep in range(repeats):
         fire_sizes = simulate_fire(l, p, f, min_events)
         rel_sizes = fire_sizes / (l * l)
         bins = np.logspace(np.log10(1 / (l * l)), 0, 50)
         x, y = ccdf(rel_sizes, bins)
         # Fit power law to tail (exclude smallest sizes)
-        lower_bound = 0.01
-        upper_bound = 0.2
-
         fit_mask = (x > lower_bound) & (x < upper_bound)
         try:
             popt, _ = curve_fit(
