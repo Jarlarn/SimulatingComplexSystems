@@ -80,13 +80,11 @@ for idx, dhalf in enumerate(dhalf_values):
                 f"Elapsed: {elapsed:.1f}s | Est. time left: {est_remaining:.1f}s"
             )
 
-    # Plot lattice in its own figure
     ax_lattice = lattice_axes[idx]
     ax_lattice.imshow(lattice, cmap="bwr", vmin=-1, vmax=1)
     ax_lattice.set_title(f"dhalf = {dhalf}, S1 = {S1}, S2 = {S2}")
     ax_lattice.axis("off")
 
-    # Plot etot history in its own figure
     ax_etot = etot_axes[idx]
     ax_etot.plot(range(1, steps + 1), etot_history, label="etot")
     equilibrium_etot = float(np.mean(etot_history[-1000:]))

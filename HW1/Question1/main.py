@@ -15,7 +15,7 @@ MASS = 1.0
 EPSILON = 1.0
 TIME_STEP = 0.001
 VELOCITY = 1.0
-L = 10.0 * SIGMA  # Box size
+L = 10.0 * SIGMA
 # L = 16.0 * SIGMA
 box_min = -L / 2
 box_max = L / 2
@@ -90,9 +90,7 @@ for i in range(N):
         alpha=0.5,  # Slightly transparent
     )
     ax.add_patch(circle)
-plt.scatter(
-    positions[:, 0], positions[:, 1], s=30, color="blue", zorder=2
-)  # Blue dots on top
+plt.scatter(positions[:, 0], positions[:, 1], s=30, color="blue", zorder=2)
 plt.title("Initial Configuration at t = 0")
 plt.xlim(box_min, box_max)
 plt.xlim(box_min, box_max)

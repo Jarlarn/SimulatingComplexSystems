@@ -9,7 +9,6 @@ V1_list = []
 
 
 def count_neighbors(lattice):
-    # Sum over all 8 neighbors using np.roll for periodic boundaries
     neighbors = (
         np.roll(lattice, 1, axis=0)
         + np.roll(lattice, -1, axis=0)
@@ -24,19 +23,15 @@ def count_neighbors(lattice):
 
 
 for p in p_values:
-    # Initialize lattice with fraction p of 1s
     lattice = np.random.choice([0, 1], size=(N, N), p=[1 - p, p])
     for step in range(steps):
         neighbors = count_neighbors(lattice)
-        # Majority rule update
-        new_lattice = np.where(neighbors <= 3, 0, lattice)  # vote 0
-        new_lattice = np.where(neighbors >= 5, 1, new_lattice)  # vote 1
-        # If neighbors == 4, keep current state
+        new_lattice = np.where(neighbors <= 3, 0, lattice)
+        new_lattice = np.where(neighbors >= 5, 1, new_lattice)
         lattice = new_lattice
     final_states.append(lattice.copy())
     V1_list.append(np.sum(lattice))
 
-# (A) Plot final state for each p
 fig, axes = plt.subplots(1, len(p_values), figsize=(15, 3))
 for i, (ax, state, p) in enumerate(zip(axes, final_states, p_values)):
     ax.imshow(state, cmap="binary")
@@ -47,7 +42,6 @@ plt.tight_layout()
 plt.savefig("Finalstate")
 plt.show()
 
-# (B) Plot V1(p)
 plt.figure(figsize=(6, 4))
 plt.plot(p_values, V1_list, marker="o")
 plt.xlabel("Initial fraction p")

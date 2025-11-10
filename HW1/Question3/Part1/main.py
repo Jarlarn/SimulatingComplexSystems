@@ -94,7 +94,7 @@ for l in sizes:
     textstr = f"Average α: {mean_alpha:.2f} ± {std_alpha:.2f}\n{fit_region}"
     plt.gca().text(
         0.05,
-        0.05,  # bottom left
+        0.05,
         textstr,
         transform=plt.gca().transAxes,
         fontsize=10,
@@ -111,7 +111,6 @@ for l in sizes:
     std_alphas.append(std_alpha)
     inv_N.append(1 / l)
 
-# Plot ¯αN vs N^{-1} with error bars and trendline
 plt.figure(figsize=(6, 4))
 plt.errorbar(inv_N, mean_alphas, yerr=std_alphas, fmt="o", capsize=5, label="Data")
 coeffs = np.polyfit(inv_N, mean_alphas, 1)
