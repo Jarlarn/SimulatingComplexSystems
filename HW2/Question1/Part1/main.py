@@ -54,6 +54,7 @@ for n in n_values:
         esc_times_n.append(esc_time)
     escape_times.append(esc_times_n)
 
+
 # Plot U(x) for all trap depths
 x_vals = np.linspace(-1.2 * intervall_max, 1.2 * intervall_max, 500)
 plt.figure(figsize=(8, 5))
@@ -83,6 +84,63 @@ plt.tight_layout()
 plt.savefig("Force Profiles")
 plt.show()
 
+# Plot sample trajectories x(t) for different trap depths
+plt.figure(figsize=(8, 5))
+for n in n_values:
+    trap_depth = n * KB * T
+    times = np.arange(0, T_TOT, delta_t)
+    x_vals = []
+    x = 0.0
+    for t in times:
+        x = (
+            x
+            + calculate_force(x, trap_depth) / friction_coeff * delta_t
+            + np.sqrt(2 * diffusion_coeff * delta_t) * generate_noise()
+        )
+        x_vals.append(x)
+    plt.plot(
+        times / 3600, np.array(x_vals) * 1e6, label=f"n={n}"
+    )  # Convert x to μm and time to hours
+
+plt.xlabel("Time (hours)")
+plt.ylabel("x(t) (μm)")
+plt.title("Sample Trajectories x(t) for Different Trap Depths")
+plt.legend()
+plt.tight_layout()
+plt.savefig("Sample Trajectories")
+plt.show()
+
 # Optional: Print escape times
 for idx, esc_times_n in enumerate(escape_times):
     print(f"n={n_values[idx]}, escape times (s): {esc_times_n}")
+
+# Calculate average and standard deviation of escape times
+average_escape_times = []
+std_escape_times = []
+
+for esc_times_n in escape_times:
+    avg_time = np.mean(esc_times_n)
+    std_time = np.std(esc_times_n)
+    average_escape_times.append(avg_time)
+    std_escape_times.append(std_time)
+
+# Print table of escape times
+print("n\tAverage Escape Time (s)\tStandard Deviation (s)")
+for idx, n in enumerate(n_values):
+    print(f"{n}\t{average_escape_times[idx]:.2f}\t\t\t{std_escape_times[idx]:.2f}")
+
+# Plot average escape times with error bars
+plt.figure(figsize=(8, 5))
+plt.errorbar(
+    n_values,
+    np.array(average_escape_times) / 3600,
+    yerr=np.array(std_escape_times) / 3600,
+    fmt="o",
+    capsize=5,
+)
+plt.xlabel("n")
+plt.ylabel("Average Escape Time (hours)")
+plt.title("Average Escape Time with Error Bars")
+plt.tight_layout()
+plt.savefig("Escape Times with Error Bars")
+plt.show()
