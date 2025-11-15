@@ -4,7 +4,7 @@ from scipy.optimize import curve_fit
 
 
 def simulate_fire(l, p=0.01, f=0.2, min_events=300):
-    """Simulate forest fire model and return fire sizes using von Neumann neighborhood."""
+    """Simulate forest fire model and return fire sizes using Moore neighborhood."""
     S = np.zeros((l, l))
     fire_sizes = []
     fire_count = 0
