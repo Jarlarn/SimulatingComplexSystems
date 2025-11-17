@@ -44,7 +44,7 @@ def monte_carlo_step(lattice):
         )
         # Calculate energies for spin up (+1) and spin down (-1)
         E_plus = -(H + J * neighbors)
-        E_minus = -(H - J * neighbors)
+        E_minus = H - J * neighbors
         # Probabilities for spin up and down
         p_plus = np.exp(-beta * E_plus)
         p_minus = np.exp(-beta * E_minus)

@@ -27,7 +27,7 @@ for p in p_values:
     for step in range(steps):
         neighbors = count_neighbors(lattice)
         new_lattice = np.where(neighbors <= 3, 0, lattice)
-        new_lattice = np.where(neighbors >= 5, 1, new_lattice)
+        new_lattice = np.where(neighbors >= 5, 1, new_lattice)  
         lattice = new_lattice
     final_states.append(lattice.copy())
     V1_list.append(np.sum(lattice))
