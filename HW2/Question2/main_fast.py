@@ -1,171 +1,118 @@
 import numpy as np
 import matplotlib.pyplot as plt
-import time
-import sys
 
 # Physical parameters
-R = 1e-6  # Particle radius (m)
 kb = 1.380e-23  # Boltzmann constant (J/K)
-eta = 1e-3  # Fluid viscosity (Pa·s)
 T = 300  # Temperature (K)
+eta = 1e-3  # Fluid viscosity (Pa·s)
+R = 1e-6  # Particle radius (m)
 k = 1e-6  # Trap stiffness (N/m)
 delta_t = 2e-3  # Time step (s)
 
-# Simulation parameters
-N_ensemble = 100  # Number of trajectories
+# Simulation parameters for Task B
 T_tot = 360  # Total simulation time (s)
+N_ensemble = 100  # Number of trajectories
+
+# Derived parameters
+gamma = 6 * np.pi * eta * R
+D = kb * T / gamma
+tau = gamma / k
+
+# Time arrays
 time_steps = int(T_tot / delta_t)
 times = np.linspace(0, T_tot, time_steps)
 
-# Derived parameters
-gamma = 6 * np.pi * eta * R  # Friction coefficient
-D = kb * T / gamma  # Diffusion coefficient
-tau = gamma / k  # Trap characteristic time
-
-
-def simulate_ensemble_trajectories(N_ensemble, time_steps, equilibration_steps):
-    """Simulate N_ensemble independent particle trajectories with equilibration."""
-    total_steps = time_steps + equilibration_steps
-
-    # Pre-generate all random noise
-    noise_x = np.random.normal(size=(N_ensemble, total_steps))
-    noise_y = np.random.normal(size=(N_ensemble, total_steps))
-
-    # Initialize position arrays
-    x = np.zeros((N_ensemble, total_steps))
-    y = np.zeros((N_ensemble, total_steps))
-
-    # Simulate trajectories using Eq. 6
-    for t in range(1, total_steps):
-        if t % 20000 == 0:
-            print(f"Simulation progress: {100 * t / total_steps:.1f}%")
-
-        # Update x and y positions
-        x[:, t] = (
-            x[:, t - 1]
-            - (k / gamma) * x[:, t - 1] * delta_t
-            + np.sqrt(2 * D * delta_t) * noise_x[:, t]
-        )
-        y[:, t] = (
-            y[:, t - 1]
-            - (k / gamma) * y[:, t - 1] * delta_t
-            + np.sqrt(2 * D * delta_t) * noise_y[:, t]
-        )
-
-    # Return only the equilibrated portion
-    return x[:, equilibration_steps:], y[:, equilibration_steps:]
-
 
 def logspaced_lags(N, num_lags=200):
-    """Generate logarithmically spaced lag values for efficient MSD calculation."""
     lags = np.unique(np.logspace(0, np.log10(N - 1), num=num_lags, dtype=int))
-    return lags[lags > 0]  # Remove zero lag
+    return lags[lags > 0]
 
 
-def calculate_emsd(ensemble_x, ensemble_y, num_lags=200):
-    """Calculate ensemble-averaged MSD (eMSD) using log-spaced lags."""
-    N_ens, N = ensemble_x.shape
-    lags = logspaced_lags(N, num_lags)
-    msd = np.empty(len(lags))
-    start = time.time()
-
-    for i, lag in enumerate(lags):
-        # Calculate displacement for all particles at this lag
-        dx = ensemble_x[:, lag:] - ensemble_x[:, :-lag]
-        dy = ensemble_y[:, lag:] - ensemble_y[:, :-lag]
-        msd[i] = np.mean(dx**2 + dy**2)
-
-        # Print progress every 10%
-        if i % max(1, len(lags) // 10) == 0 or i == len(lags) - 1:
-            elapsed = time.time() - start
-            percent = 100 * (i + 1) / len(lags)
-            est_left = (elapsed / percent * 100 - elapsed) if percent > 0 else 0
-            print(f"eMSD progress: {percent:.1f}% | Time left: {est_left:.1f}s")
-            sys.stdout.flush()
-
-    return lags, msd
+def simulate_equilibrated_start():
+    """Equilibrate a single trajectory and return the final position."""
+    t0 = 5 * tau
+    equil_steps = int(t0 / delta_t)
+    x, y = 0.0, 0.0
+    for _ in range(equil_steps):
+        x += -(k / gamma) * x * delta_t + np.sqrt(2 * D * delta_t) * np.random.normal()
+        y += -(k / gamma) * y * delta_t + np.sqrt(2 * D * delta_t) * np.random.normal()
+    return x, y
 
 
-def calculate_tmsd(x, y, num_lags=200):
-    """Calculate time-averaged MSD (tMSD) for a single trajectory using log-spaced lags."""
-    N = len(x)
-    lags = logspaced_lags(N, num_lags)
-    msd = np.empty(len(lags))
-    start = time.time()
-
-    for i, lag in enumerate(lags):
-        # Calculate displacement at this lag
-        dx = x[lag:] - x[:-lag]
-        dy = y[lag:] - y[:-lag]
-        msd[i] = np.mean(dx**2 + dy**2)
-
-        # Print progress every 10%
-        if i % max(1, len(lags) // 10) == 0 or i == len(lags) - 1:
-            elapsed = time.time() - start
-            percent = 100 * (i + 1) / len(lags)
-            est_left = (elapsed / percent * 100 - elapsed) if percent > 0 else 0
-            print(f"tMSD progress: {percent:.1f}% | Time left: {est_left:.1f}s")
-            sys.stdout.flush()
-
-    return lags, msd
-
-
-def simulate_trajectory(time_steps, x0=0.0, y0=0.0):
-    noise_x = np.random.normal(size=time_steps)
-    noise_y = np.random.normal(size=time_steps)
-    x = np.zeros(time_steps)
-    y = np.zeros(time_steps)
-    x[0] = x0
-    y[0] = y0
-    for t in range(1, time_steps):
+def simulate_trajectory(x0, y0, steps):
+    """Simulate a single trajectory starting from (x0, y0)."""
+    x = np.zeros(steps)
+    y = np.zeros(steps)
+    x[0], y[0] = x0, y0
+    for t in range(1, steps):
         x[t] = (
             x[t - 1]
             - (k / gamma) * x[t - 1] * delta_t
-            + np.sqrt(2 * D * delta_t) * noise_x[t]
+            + np.sqrt(2 * D * delta_t) * np.random.normal()
         )
         y[t] = (
             y[t - 1]
             - (k / gamma) * y[t - 1] * delta_t
-            + np.sqrt(2 * D * delta_t) * noise_y[t]
+            + np.sqrt(2 * D * delta_t) * np.random.normal()
         )
     return x, y
 
 
-# Main simulation
-print("Starting simulation with equilibration...")
-t0 = 5 * tau  # Equilibration time (5 trap characteristic times)
-equilibration_steps = int(t0 / delta_t)
+def calculate_emsd(ensemble_x, ensemble_y, num_lags=200):
+    N_ens, N = ensemble_x.shape
+    lags = logspaced_lags(N, num_lags)
+    msd = np.empty(len(lags))
+    for i, lag in enumerate(lags):
+        dx = ensemble_x[:, lag:] - ensemble_x[:, :-lag]
+        dy = ensemble_y[:, lag:] - ensemble_y[:, :-lag]
+        msd[i] = np.mean(dx**2 + dy**2)
+    return lags, msd
 
-ensemble_x = []
-ensemble_y = []
+
+def calculate_tmsd(x, y, num_lags=200):
+    N = len(x)
+    lags = logspaced_lags(N, num_lags)
+    msd = np.empty(len(lags))
+    for i, lag in enumerate(lags):
+        dx = x[lag:] - x[:-lag]
+        dy = y[lag:] - y[:-lag]
+        msd[i] = np.mean(dx**2 + dy**2)
+    return lags, msd
+
+
+# --- Simulate ensemble trajectories for eMSD ---
+ensemble_x = np.zeros((N_ensemble, time_steps))
+ensemble_y = np.zeros((N_ensemble, time_steps))
 for j in range(N_ensemble):
-    # Equilibration phase
-    x_eq, y_eq = simulate_trajectory(equilibration_steps)
-    x0, y0 = x_eq[-1], y_eq[-1]
-    # Main trajectory
-    x, y = simulate_trajectory(time_steps, x0, y0)
-    ensemble_x.append(x)
-    ensemble_y.append(y)
-ensemble_x = np.array(ensemble_x)
-ensemble_y = np.array(ensemble_y)
+    x0, y0 = simulate_equilibrated_start()  # Equilibrate
+    x_traj, y_traj = simulate_trajectory(x0, y0, time_steps)  # Main trajectory
+    ensemble_x[j] = x_traj
+    ensemble_y[j] = y_traj
 
-print("\nCalculating eMSD...")
+# --- Simulate single trajectory for tMSD ---
+x0, y0 = simulate_equilibrated_start()
+x_single, y_single = simulate_trajectory(x0, y0, time_steps)
+
+# --- Calculate MSDs ---
 lags_emsd, emsd = calculate_emsd(ensemble_x, ensemble_y)
+lags_tmsd, tmsd = calculate_tmsd(x_single, y_single)
 
-print("\nCalculating tMSD...")
-lags_tmsd, tmsd = calculate_tmsd(ensemble_x[0], ensemble_y[0])
+# --- Convert lag indices to time differences ---
+time_diffs_emsd = times[lags_emsd]
+time_diffs_tmsd = times[lags_tmsd]
 
-# Convert lag indices to actual time differences
-time_differences_emsd = times[lags_emsd]
-time_differences_tmsd = times[lags_tmsd]
-
-# Plot results
+# --- Plot ---
 plt.figure(figsize=(8, 5))
 plt.loglog(
-    time_differences_emsd, emsd, label="eMSD", color="orange", marker="o", markersize=3
+    time_diffs_emsd,
+    emsd,
+    label="eMSD (ensemble)",
+    color="orange",
+    marker="o",
+    markersize=3,
 )
 plt.loglog(
-    time_differences_tmsd, tmsd, label="tMSD", color="blue", marker="s", markersize=3
+    time_diffs_tmsd, tmsd, label="tMSD (single)", color="blue", marker="s", markersize=3
 )
 plt.xlabel("Δt (s)")
 plt.ylabel("MSD (m²)")
@@ -173,7 +120,7 @@ plt.title(f"eMSD and tMSD vs Time Difference (N={N_ensemble}, T_tot={T_tot}s)")
 plt.legend()
 plt.grid(True, alpha=0.3)
 plt.tight_layout()
-plt.savefig(f"EMSD_TMSD_LogLog_{N_ensemble}.png", dpi=600)
+plt.savefig(f"EMSD_TMSD_TaskB_{N_ensemble}.png", dpi=600)
 plt.show()
 
-print("\nDone! Plot saved.")
+print("Done! Plot saved.")
