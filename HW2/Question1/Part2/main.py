@@ -150,7 +150,7 @@ def calculate_transition_frequency(trap_depth):
 
 
 # Calculate transition frequency for constant trap depth
-trap_depth = 8 * KB * T  # Constant trap depth
+trap_depth = 8 * KB * T
 transition_frequency = calculate_transition_frequency(trap_depth)
 
 print(f"Transition Frequency: {transition_frequency:.4f} Hz")

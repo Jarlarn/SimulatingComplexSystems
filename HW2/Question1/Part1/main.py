@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
+# Parameters
 KB = 1.380e-23
 T = 300
 eta = 1e-3
