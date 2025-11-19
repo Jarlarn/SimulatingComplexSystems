@@ -2,14 +2,19 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 # Parameters
-N = 200
+normal_count = 100  # Number of normal particles
+contrarian_count = 100  # Number of contrarian particles
+N = normal_count + contrarian_count
 L = 80
 eta = 0.02
 v = 0.5
 Rf = 2
 dt = 1
 T_tot = 7500
-contrarian_count = N // 2  # N/2 contrarians
+
+# Indices for populations
+contrarian_indices = np.arange(contrarian_count)  # First 'contrarian_count' particles
+normal_indices = np.arange(contrarian_count, N)  # Remaining particles
 
 
 # Helper functions
@@ -53,9 +58,6 @@ def contrarian_average(theta_list):
 # Initialization
 positions = np.random.uniform(0, L, (N, 2))
 theta = np.random.uniform(-np.pi, np.pi, N)
-
-contrarian_indices = np.arange(contrarian_count)
-normal_indices = np.arange(contrarian_count, N)
 
 # Data storage
 save_times = [0, 250, 2500, 5000, 7500]
@@ -101,7 +103,6 @@ for t in range(T_tot + 1):
 # D - Plot configurations at requested times, distinguishing populations
 plot_times = [0, 2500, 5000, 7500]
 for idx, t in enumerate(plot_times):
-    # Find index in save_times
     save_idx = save_times.index(t)
     plt.figure(figsize=(8, 8))
     # Normal particles
@@ -111,7 +112,7 @@ for idx, t in enumerate(plot_times):
         np.cos(theta_snapshots[save_idx][normal_indices]),
         np.sin(theta_snapshots[save_idx][normal_indices]),
         color="blue",
-        label="Normal",
+        label=f"Normal ({normal_count})",
         angles="xy",
         scale_units="xy",
         scale=1,
@@ -125,19 +126,24 @@ for idx, t in enumerate(plot_times):
         np.cos(theta_snapshots[save_idx][contrarian_indices]),
         np.sin(theta_snapshots[save_idx][contrarian_indices]),
         color="red",
-        label="Contrarian",
+        label=f"Contrarian ({contrarian_count})",
         angles="xy",
         scale_units="xy",
         scale=1,
-        width=0.005,
-        alpha=0.7,
+        width=0.01,
+        alpha=0.9,
     )
     plt.xlim(0, L)
     plt.ylim(0, L)
-    plt.title(f"Configuration (N/2 contrarians) at t = {t} Δt")
+    plt.title(
+        f"Configuration ({contrarian_count} contrarian{'s' if contrarian_count > 1 else ''}, {normal_count} normal) at t = {t} Δt"
+    )
     plt.legend()
     plt.tight_layout()
-    plt.savefig(f"vicsek_config_N2contrarians_t{t}.png", dpi=300)
+    plt.savefig(
+        f"vicsek_config_{contrarian_count}contrarian_{normal_count}normal_t{t}.png",
+        dpi=300,
+    )
     plt.show()
 
 # E - Plot global alignment coefficient ψ and clustering coefficient c
@@ -146,13 +152,20 @@ plt.subplot(1, 2, 1)
 plt.plot(save_times, psi_list, marker="o")
 plt.xlabel("Time step")
 plt.ylabel("Global alignment ψ")
-plt.title("Global Alignment Coefficient (N/2 contrarians)")
+plt.title(
+    f"Global Alignment Coefficient ({contrarian_count} contrarian{'s' if contrarian_count > 1 else ''}, {normal_count} normal)"
+)
 
 plt.subplot(1, 2, 2)
 plt.plot(save_times, c_list, marker="s")
 plt.xlabel("Time step")
 plt.ylabel("Clustering coefficient c")
-plt.title("Global Clustering Coefficient (N/2 contrarians)")
+plt.title(
+    f"Global Clustering Coefficient ({contrarian_count} contrarian{'s' if contrarian_count > 1 else ''}, {normal_count} normal)"
+)
 plt.tight_layout()
-plt.savefig("vicsek_alignment_clustering_N2contrarians.png", dpi=300)
+plt.savefig(
+    f"vicsek_alignment_clustering_{contrarian_count}contrarian_{normal_count}normal.png",
+    dpi=300,
+)
 plt.show()

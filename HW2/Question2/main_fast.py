@@ -10,8 +10,8 @@ k = 1e-6  # Trap stiffness (N/m)
 delta_t = 2e-3  # Time step (s)
 
 # Simulation parameters for Task B
-T_tot = 360  # Total simulation time (s)
-N_ensemble = 100  # Number of trajectories
+T_tot = 60  # Total simulation time (s)
+N_ensemble = 10  # Number of trajectories
 
 # Derived parameters
 gamma = 6 * np.pi * eta * R
@@ -90,7 +90,7 @@ for j in range(N_ensemble):
     ensemble_y[j] = y_traj
 
 # --- Simulate single trajectory for tMSD ---
-x0, y0 = simulate_equilibrated_start()
+x0, y0 = 0, 0
 x_single, y_single = simulate_trajectory(x0, y0, time_steps)
 
 # --- Calculate MSDs ---
