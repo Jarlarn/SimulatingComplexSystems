@@ -14,7 +14,8 @@ L = 3.0
 N = 10
 delta_pos = 5 * delta_t
 delta_neg = -5 * delta_t
-Nneg = 1  # Number of robots with negative delay
+Npos = 1  # Number of robots with positive delay
+Nneg = N - Npos  # Number of robots with negative delay
 np.random.seed(42)
 
 # Initial positions and orientations
@@ -23,8 +24,8 @@ y = np.random.uniform(0, L, N)
 theta = np.random.uniform(0, 2 * np.pi, N)
 
 # Assign delays
-delays = np.ones(N) * delta_pos
-delays[:Nneg] = delta_neg
+delays = np.ones(N) * delta_neg  # Default: negative delay
+delays[:Npos] = delta_pos  # First Npos robots get positive delay
 
 # Store trajectories
 x_traj = np.zeros((N, int(T_tot / delta_t) + 1))
@@ -62,10 +63,10 @@ def v_of_I(I):
     return V_inf + (V0 - V_inf) * np.exp(-I / Ic)
 
 
-# Store for plotting negative delay robot
-neg_idx = 0  # index of robot with negative delay
-neg_x = []
-neg_y = []
+# Store for plotting positive delay robot
+pos_idx = 0  # index of robot with positive delay
+pos_x = []
+pos_y = []
 
 # Collect all positions for all robots at all time steps
 all_x = []
@@ -82,7 +83,8 @@ for t_idx in range(1, int(T_tot / delta_t) + 1):
     I_all = np.zeros(N)
     for n in range(N):
         delay_steps = int(np.round(delays[n] / delta_t))
-        idx = max(0, t_idx - delay_steps)
+        idx = int(np.round(t_idx - delays[n] / delta_t))
+        idx = np.clip(idx, 0, x_traj.shape[1] - 1)
         # Use previous positions for delay
         x_delay = x_traj[:, idx] if idx < x_traj.shape[1] else x_traj[:, -1]
         y_delay = y_traj[:, idx] if idx < y_traj.shape[1] else y_traj[:, -1]
@@ -104,9 +106,9 @@ for t_idx in range(1, int(T_tot / delta_t) + 1):
     all_x.extend(x)
     all_y.extend(y)
 
-    # For 2D histogram of negative delay robot
-    neg_x.append(x[neg_idx])
-    neg_y.append(y[neg_idx])
+    # For 2D histogram of positive delay robot
+    pos_x.append(x[pos_idx])
+    pos_y.append(y[pos_idx])
 
 # (A) Plot initial and final configuration
 plt.figure(figsize=(8, 4))
@@ -131,18 +133,18 @@ plt.tight_layout()
 plt.savefig("initial_final_configuration.png")  # Save plot
 plt.show()
 
-# Plot trajectory of negative delay robot
+# Plot trajectory of positive delay robot
 plt.figure(figsize=(5, 5))
-plt.plot(neg_x, neg_y, label="Negative delay robot")
-plt.scatter([neg_x[0]], [neg_y[0]], c="green", label="Start")
-plt.scatter([neg_x[-1]], [neg_y[-1]], c="red", label="End")
+plt.plot(pos_x, pos_y, label="Positive delay robot")
+plt.scatter([pos_x[0]], [pos_y[0]], c="green", label="Start")
+plt.scatter([pos_x[-1]], [pos_y[-1]], c="red", label="End")
 plt.xlim(0, L)
 plt.ylim(0, L)
 plt.xlabel("x (m)")
 plt.ylabel("y (m)")
-plt.title("Trajectory of negative delay robot")
+plt.title("Trajectory of positive delay robot")
 plt.legend()
-plt.savefig("negative_delay_trajectory.png")  # Save plot
+plt.savefig("positive_delay_trajectory.png")  # Save plot
 plt.show()
 
 # (B) 2D histogram of area explored by all robots
