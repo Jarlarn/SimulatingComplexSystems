@@ -45,7 +45,7 @@ plt.tight_layout()
 plt.savefig("spurious_drift_sx.png", dpi=300)
 plt.show()
 
-## Task B Task B Task B Task B Task B Task B Task B Task B Task B Task B Task B Task B
+## Task B
 
 # Simulate trajectories for α=0 (Ito) and α=1 (anti-Ito)
 np.random.seed(42)  # For reproducibility
