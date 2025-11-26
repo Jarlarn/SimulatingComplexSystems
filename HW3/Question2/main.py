@@ -22,7 +22,7 @@ delta_neg_steps = -5
 # --- Configuration for Delays ---
 # Easily adjustable parameter to set the number of robots with negative delay.
 # The rest will have positive delay.
-N_neg_delay = 1
+N_neg_delay = 9
 
 # --- Initialize Delays ---
 # Start with all robots having positive delay
@@ -211,22 +211,3 @@ fig3.colorbar(hist[3], ax=ax4, label="Visits")
 
 plt.savefig("part2_histogram.png")
 plt.show()
-
-# --- (F) Comments on the Plots ---
-"""
-(F) Comments and Comparison
-
-Plot (D) - Configurations and Trajectory:
-- The initial configuration shows the robots scattered randomly across the arena, as expected.
-- The final configuration shows the robots clustered together. This indicates a strong attractive interaction. The negative delay robots, which can "predict" the intensity, move towards areas of future high intensity (i.e., where other robots will be), causing them to aggregate. The single positive delay robot is drawn into this cluster.
-- The trajectory of the single robot with positive delay shows it moving around the arena and eventually joining the main cluster of robots. Its path is erratic due to the noise term but is clearly biased towards the aggregate.
-
-Plot (E) - 2D Histogram:
-- The histogram is not uniform. It shows one or a few very bright spots, confirming that the robots spent the vast majority of their time aggregated in a small area.
-- The rest of the arena is dark, indicating it was explored very little after the initial phase. The system quickly collapses from a space-filling state to a condensed, clustered state.
-
-Comparison with Part 1 (Assumed Behavior):
-- This behavior is the opposite of what is expected in Part 1 (where all robots have positive delay).
-- In Part 1, positive delay leads to a repulsive effect. Robots move away from areas of high intensity, causing them to spread out and explore the arena more uniformly. The 2D histogram for Part 1 would be much more evenly colored.
-- In Part 2, the dominance of negative-delay robots creates a strong attractive force, leading to aggregation and poor overall exploration of the space. The single positive-delay robot is not sufficient to counteract this collective clustering behavior.
-"""
