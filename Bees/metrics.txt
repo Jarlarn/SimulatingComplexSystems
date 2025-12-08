@@ -1,0 +1,40 @@
+Test 1:
+============================================================
+Parameters
+============================================================
+
+# Simulation parameters
+L: int = 500
+min_length: int = -L
+max_length: int = L
+num_plants: int = 500
+num_bees: int = 2000
+num_hives: int = 2
+v_mean = 24  # Avg bee speed
+v_std = 1.0
+
+# Simulation settings
+dt = 0.05  # Time step
+max_steps = 1000
+attraction_strength = 0.4
+
+============================================================
+FINAL SIMULATION METRICS
+============================================================
+
+Bee Performance:
+  Total trips completed: 1440
+  Average trips per bee: 0.72
+  Total pollen collected: 36220.0
+  Average distance per bee: 1640.2
+
+Plant Coverage:
+  Total plant visits: 1811
+  Plants visited: 392/500
+  Visitation rate: 78.4%
+  Average pollen level: 27.6%
+
+Efficiency Metrics:
+  Pollen per distance: 0.0110
+  Pollen per bee per step: 0.0181
+============================================================
