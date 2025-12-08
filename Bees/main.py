@@ -1,6 +1,6 @@
 import matplotlib.pyplot as plt
 import numpy as np
-from bee_movement import Bee
+from bee import Bee
 from plant import Plant
 from typing import List, Tuple
 
@@ -94,8 +94,8 @@ def plot_simulation(
     )
 
     # Plot velocity vectors for each bee
-    bee_u = [bee.velocity * np.cos(bee.orientaion) for bee in bees]
-    bee_v = [bee.velocity * np.sin(bee.orientaion) for bee in bees]
+    bee_u = [bee.velocity * np.cos(bee.orientation) for bee in bees]
+    bee_v = [bee.velocity * np.sin(bee.orientation) for bee in bees]
     plt.quiver(
         bee_x,
         bee_y,
