@@ -3,7 +3,7 @@ class Plant:
         self,
         x: float,
         y: float,
-        max_pollen: int = 100,
+        max_pollen: int = 3,
         attraction_radius: float = 50.0,
     ) -> None:
         self.x: float = x
@@ -23,7 +23,7 @@ class Plant:
         """Check if plant has pollen available."""
         return self.current_pollen > 0
 
-    def collect_pollen(self, amount: float = 10.0) -> float:
+    def collect_pollen(self, amount: float = 0.70) -> float:
         """Collect pollen from the plant. Returns amount actually collected."""
         collected = min(amount, self.current_pollen)
         self.current_pollen -= collected

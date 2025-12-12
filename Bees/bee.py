@@ -26,7 +26,7 @@ class Bee:
         # Pollen state
         self.has_pollen: bool = False
         self.pollen_amount: float = 0.0
-        self.pollen_capacity: float = 20.0
+        self.pollen_capacity: float = 35.0  # mg
 
         # Memory of last plant visited
         self.last_plant_visited: Optional[object] = None

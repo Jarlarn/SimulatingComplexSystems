@@ -2,18 +2,21 @@ import matplotlib.pyplot as plt
 import numpy as np
 from bee import Bee
 from plant import Plant
-from typing import List, Tuple, Dict
+from typing import List, Tuple, Dict, Optional
 import matplotlib.animation as animation
 import json
 import os
 from datetime import datetime
 
+# Each bee can visit 75 plants before reaching capacity.
+# Each plant holds 3 mg pollen
+# Each visit collects 0.7 mg pollen
 # Simulation parameters
-L: int = 500
+L: int = 500  # 1 Acre
 min_length: int = -L
 max_length: int = L
-num_plants: int = 50
-num_bees: int = 200
+num_plants: int = 10
+num_bees: int = 40
 num_hives: int = 2
 v_mean = 24  # Avg bee speed
 v_std = 1.0
@@ -34,6 +37,27 @@ def ensure_results_folder() -> None:
         print(f"Created '{RESULTS_FOLDER}' folder")
 
 
+def get_next_run_folder() -> str:
+    """Create and return the next run folder path (results/runN)."""
+    ensure_results_folder()
+    existing = [
+        d
+        for d in os.listdir(RESULTS_FOLDER)
+        if os.path.isdir(os.path.join(RESULTS_FOLDER, d)) and d.startswith("run")
+    ]
+    indices = []
+    for name in existing:
+        try:
+            indices.append(int(name[3:]))
+        except ValueError:
+            continue
+    next_idx = (max(indices) + 1) if indices else 1
+    run_dir = os.path.join(RESULTS_FOLDER, f"run{next_idx}")
+    os.makedirs(run_dir, exist_ok=True)
+    print(f"✓ Sweep directory: {run_dir}")
+    return run_dir
+
+
 def get_simulation_parameters() -> Dict:
     """Get all current simulation parameters."""
     return {
@@ -51,8 +75,9 @@ def get_simulation_parameters() -> Dict:
 
 def save_run_results(
     metrics: Dict,
-    run_name: str = None,
-    parameters: Dict = None,
+    run_name: Optional[str] = None,
+    parameters: Optional[Dict] = None,
+    base_dir: Optional[str] = None,
 ) -> str:
     """Save simulation results to a JSON file in the results folder."""
     ensure_results_folder()
@@ -74,7 +99,9 @@ def save_run_results(
     }
 
     # Save as JSON
-    filepath = os.path.join(RESULTS_FOLDER, f"{run_name}.json")
+    target_dir = base_dir if base_dir else RESULTS_FOLDER
+    os.makedirs(target_dir, exist_ok=True)
+    filepath = os.path.join(target_dir, f"{run_name}.json")
     with open(filepath, "w") as f:
         json.dump(result_data, f, indent=2)
 
@@ -83,14 +110,17 @@ def save_run_results(
     return filepath
 
 
-def create_results_summary() -> str:
-    """Create a summary CSV of all results for easy comparison."""
+def create_results_summary(base_dir: Optional[str] = None) -> str:
+    """Create a summary CSV of JSON results for easy comparison.
+    If base_dir is provided, summarize that folder; otherwise summarize top-level results.
+    """
     ensure_results_folder()
 
-    summary_path = os.path.join(RESULTS_FOLDER, "summary.csv")
+    target_dir = base_dir if base_dir else RESULTS_FOLDER
+    summary_path = os.path.join(target_dir, "summary.csv")
 
     # Collect all run files
-    run_files = [f for f in os.listdir(RESULTS_FOLDER) if f.endswith(".json")]
+    run_files = [f for f in os.listdir(target_dir) if f.endswith(".json")]
 
     if not run_files:
         print("No results to summarize")
@@ -99,7 +129,7 @@ def create_results_summary() -> str:
     # Extract data from each run
     summary_data = []
     for filename in sorted(run_files):
-        filepath = os.path.join(RESULTS_FOLDER, filename)
+        filepath = os.path.join(target_dir, filename)
         try:
             with open(filepath, "r") as f:
                 data = json.load(f)
@@ -529,28 +559,172 @@ def run_simulation(
 
 def main() -> None:
     """Main entry point."""
-    # Run simulation
-    bees, plants, metrics = run_simulation(
-        num_steps=max_steps,
-        visualize_interval=200,
-        print_metrics=True,
+    # Define parameter grid
+    bees_list = [20, 40, 80, 160]
+    plants_list = [10, 25, 50, 100]
+
+    # Run sweep
+    df = run_param_sweep(
+        bees_list=bees_list,
+        plants_list=plants_list,
+        steps=max_steps,
+        visualize_interval=0,  # disable per-run prints for speed
+        repeats=10,  # average over 2 runs to smooth randomness
     )
 
-    # Create beehives list for visualization
-    beehives = list(set([(bee.hive_x, bee.hive_y) for bee in bees]))
-
-    # Save results with current parameters
-    run_name = f"run_{num_bees}bees_{num_plants}plants_{num_hives}hives"
-    save_run_results(metrics, run_name=run_name)
-
-    # Update summary CSV
+    # Update summary CSV within the latest sweep folder as well as top-level
+    # Top-level summary remains for all-time results; per-sweep summary lives inside runN
+    # Determine latest sweep dir for convenience
+    run_dirs = [
+        d
+        for d in os.listdir(RESULTS_FOLDER)
+        if os.path.isdir(os.path.join(RESULTS_FOLDER, d)) and d.startswith("run")
+    ]
+    if run_dirs:
+        indices = []
+        for name in run_dirs:
+            try:
+                indices.append((int(name[3:]), name))
+            except ValueError:
+                continue
+        if indices:
+            latest_name = max(indices)[1]
+            create_results_summary(os.path.join(RESULTS_FOLDER, latest_name))
     create_results_summary()
 
-    # Display all saved results
-    display_saved_results()
+    # Plot
+    plot_param_sweep(df)
 
-    # Final visualization
-    plot_simulation(plants, beehives, bees, min_length, max_length, step=max_steps)
+
+import pandas as pd
+
+
+def run_param_sweep(
+    bees_list: List[int],
+    plants_list: List[int],
+    steps: int = 1000,
+    visualize_interval: int = 0,
+    repeats: int = 1,
+) -> pd.DataFrame:
+    """Run multiple simulations over combinations and return aggregated results."""
+    ensure_results_folder()
+    # Create a dedicated folder for this sweep
+    sweep_dir = get_next_run_folder()
+    records = []
+
+    global num_bees, num_plants  # use your global parameters
+
+    for plants in plants_list:
+        for bees in bees_list:
+            for r in range(repeats):
+                # set globals for this run
+                num_plants = plants
+                num_bees = bees
+
+                # run once
+                _, _, metrics = run_simulation(
+                    num_steps=steps,
+                    visualize_interval=visualize_interval,
+                    print_metrics=False,
+                )
+
+                # save JSON per run
+                run_name = f"sweep_{bees}bees_{plants}plants_r{r}"
+                save_run_results(metrics, run_name=run_name, base_dir=sweep_dir)
+
+                # collect a flat record
+                records.append(
+                    {
+                        "bees": bees,
+                        "plants": plants,
+                        "repeat": r,
+                        "total_trips": metrics["total_trips"],
+                        "total_pollen_collected": metrics["total_pollen_collected"],
+                        "avg_distance_per_bee": metrics["avg_distance_per_bee"],
+                        "avg_trips_per_bee": metrics["avg_trips_per_bee"],
+                        "total_plant_visits": metrics["total_plant_visits"],
+                        "plants_visited": metrics["plants_visited"],
+                        "visitation_rate": metrics["plant_visitation_rate"],
+                        "avg_pollen_level": metrics["avg_pollen_level"],
+                        "pollen_per_distance": metrics["pollen_per_distance"],
+                        "pollen_per_bee_per_step": metrics["pollen_per_bee_per_step"],
+                    }
+                )
+
+    df = pd.DataFrame.from_records(records)
+    # Save a CSV snapshot of this sweep
+    sweep_csv = os.path.join(sweep_dir, "param_sweep.csv")
+    df.to_csv(sweep_csv, index=False)
+    print(f"✓ Parameter sweep saved: {sweep_csv}")
+
+    return df
+
+
+def plot_param_sweep(df: pd.DataFrame) -> None:
+    """Create summary plots across parameter combinations."""
+    if df.empty:
+        print("No data to plot.")
+        return
+
+    # Aggregate over repeats
+    agg = df.groupby(["bees", "plants"], as_index=False).mean(numeric_only=True)
+
+    # Prepare pivot tables for heatmaps
+    pivot_visit = agg.pivot(index="plants", columns="bees", values="visitation_rate")
+    pivot_pollen = agg.pivot(
+        index="plants", columns="bees", values="total_pollen_collected"
+    )
+
+    fig, axes = plt.subplots(2, 2, figsize=(14, 10))
+
+    # Heatmap: Visitation rate
+    im0 = axes[0, 0].imshow(
+        pivot_visit.values, aspect="auto", cmap="viridis", vmin=0, vmax=1
+    )
+    axes[0, 0].set_title("Visitation Rate")
+    axes[0, 0].set_xlabel("Bees")
+    axes[0, 0].set_ylabel("Plants")
+    axes[0, 0].set_xticks(range(len(pivot_visit.columns)))
+    axes[0, 0].set_xticklabels(pivot_visit.columns)
+    axes[0, 0].set_yticks(range(len(pivot_visit.index)))
+    axes[0, 0].set_yticklabels(pivot_visit.index)
+    fig.colorbar(im0, ax=axes[0, 0], fraction=0.046, pad=0.04)
+
+    # Heatmap: Total pollen collected
+    im1 = axes[0, 1].imshow(pivot_pollen.values, aspect="auto", cmap="magma")
+    axes[0, 1].set_title("Total Pollen Collected")
+    axes[0, 1].set_xlabel("Bees")
+    axes[0, 1].set_ylabel("Plants")
+    axes[0, 1].set_xticks(range(len(pivot_pollen.columns)))
+    axes[0, 1].set_xticklabels(pivot_pollen.columns)
+    axes[0, 1].set_yticks(range(len(pivot_pollen.index)))
+    axes[0, 1].set_yticklabels(pivot_pollen.index)
+    fig.colorbar(im1, ax=axes[0, 1], fraction=0.046, pad=0.04)
+
+    # Line plot: Efficiency vs bees (per plants bucket)
+    for plants_val in sorted(agg["plants"].unique()):
+        sub = agg[agg["plants"] == plants_val].sort_values("bees")
+        axes[1, 0].plot(
+            sub["bees"], sub["pollen_per_bee_per_step"], label=f"plants={plants_val}"
+        )
+    axes[1, 0].set_title("Efficiency (pollen per bee per step)")
+    axes[1, 0].set_xlabel("Bees")
+    axes[1, 0].set_ylabel("Efficiency")
+    axes[1, 0].grid(True, alpha=0.3)
+    axes[1, 0].legend(fontsize=8)
+
+    # Line plot: Visitation vs plants (per bees bucket)
+    for bees_val in sorted(agg["bees"].unique()):
+        sub = agg[agg["bees"] == bees_val].sort_values("plants")
+        axes[1, 1].plot(sub["plants"], sub["visitation_rate"], label=f"bees={bees_val}")
+    axes[1, 1].set_title("Visitation Rate by Plants")
+    axes[1, 1].set_xlabel("Plants")
+    axes[1, 1].set_ylabel("Visitation rate")
+    axes[1, 1].set_ylim(0, 1)
+    axes[1, 1].grid(True, alpha=0.3)
+    axes[1, 1].legend(fontsize=8)
+
+    plt.tight_layout()
     plt.show()
 
 

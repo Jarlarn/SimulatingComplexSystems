@@ -1,0 +1,30 @@
+{
+  "timestamp": "2025-12-11T20:19:04.825004",
+  "run_name": "run_40bees_10plants_2hives",
+  "parameters": {
+    "simulation_bounds": {
+      "min": -500,
+      "max": 500
+    },
+    "num_plants": 10,
+    "num_bees": 40,
+    "num_hives": 2,
+    "bee_velocity_mean": 24,
+    "bee_velocity_std": 1.0,
+    "dt": 0.05,
+    "max_steps": 1000,
+    "attraction_strength": 0.4
+  },
+  "metrics": {
+    "total_trips": 15,
+    "total_pollen_collected": 480.0,
+    "avg_distance_per_bee": 2254.1296543130397,
+    "avg_trips_per_bee": 0.375,
+    "total_plant_visits": 24,
+    "plants_visited": 9,
+    "plant_visitation_rate": 0.9,
+    "avg_pollen_level": 0.52,
+    "pollen_per_distance": 0.005323562456595726,
+    "pollen_per_bee_per_step": 0.012
+  }
+}
