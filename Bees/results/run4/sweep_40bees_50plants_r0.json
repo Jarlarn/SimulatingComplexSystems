@@ -1,0 +1,30 @@
+{
+  "timestamp": "2025-12-12T11:14:39.935449",
+  "run_name": "sweep_40bees_50plants_r0",
+  "parameters": {
+    "simulation_bounds": {
+      "min": -500,
+      "max": 500
+    },
+    "num_plants": 50,
+    "num_bees": 40,
+    "num_hives": 1,
+    "bee_velocity_mean": 24,
+    "bee_velocity_std": 1.0,
+    "dt": 0.05,
+    "max_steps": 1000,
+    "attraction_strength": 0.4
+  },
+  "metrics": {
+    "total_trips": 64,
+    "total_pollen_collected": 2550.0,
+    "avg_distance_per_bee": 1789.9370508083532,
+    "avg_trips_per_bee": 1.6,
+    "total_plant_visits": 76,
+    "plants_visited": 28,
+    "plant_visitation_rate": 0.56,
+    "avg_pollen_level": 0.49,
+    "pollen_per_distance": 0.035615777644923255,
+    "pollen_per_bee_per_step": 0.06375
+  }
+}

@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 from bee import Bee
 from plant import Plant
 from typing import List, Tuple, Dict, Optional
@@ -16,8 +17,7 @@ L: int = 500  # 1 Acre
 min_length: int = -L
 max_length: int = L
 num_plants: int = 10
-num_bees: int = 40
-num_hives: int = 2
+num_hives: int = 1
 v_mean = 24  # Avg bee speed
 v_std = 1.0
 
@@ -258,8 +258,6 @@ def create_beehives(
 
 def create_bees(
     num_bees: int,
-    min_length: int,
-    max_length: int,
     beehives: List[Tuple[float, float]],
     v_mean: float,
     v_std: float,
@@ -506,7 +504,7 @@ def run_simulation(
     # Initialize
     plants = create_plants(num_plants, min_length, max_length)
     beehives = create_beehives(num_hives, min_length, max_length)
-    bees = create_bees(num_bees, min_length, max_length, beehives, v_mean, v_std)
+    bees = create_bees(num_bees, beehives, v_mean, v_std)
 
     print(f"Starting simulation with {num_bees} bees and {num_plants} plants...")
     print(
@@ -557,82 +555,35 @@ def run_simulation(
     return bees, plants, metrics
 
 
-def main() -> None:
-    """Main entry point."""
-    # Define parameter grid
-    bees_list = [20, 40, 80, 160]
-    plants_list = [10, 25, 50, 100]
-
-    # Run sweep
-    df = run_param_sweep(
-        bees_list=bees_list,
-        plants_list=plants_list,
-        steps=max_steps,
-        visualize_interval=0,  # disable per-run prints for speed
-        repeats=10,  # average over 2 runs to smooth randomness
-    )
-
-    # Update summary CSV within the latest sweep folder as well as top-level
-    # Top-level summary remains for all-time results; per-sweep summary lives inside runN
-    # Determine latest sweep dir for convenience
-    run_dirs = [
-        d
-        for d in os.listdir(RESULTS_FOLDER)
-        if os.path.isdir(os.path.join(RESULTS_FOLDER, d)) and d.startswith("run")
-    ]
-    if run_dirs:
-        indices = []
-        for name in run_dirs:
-            try:
-                indices.append((int(name[3:]), name))
-            except ValueError:
-                continue
-        if indices:
-            latest_name = max(indices)[1]
-            create_results_summary(os.path.join(RESULTS_FOLDER, latest_name))
-    create_results_summary()
-
-    # Plot
-    plot_param_sweep(df)
-
-
-import pandas as pd
-
-
 def run_param_sweep(
     bees_list: List[int],
     plants_list: List[int],
     steps: int = 1000,
     visualize_interval: int = 0,
     repeats: int = 1,
-) -> pd.DataFrame:
-    """Run multiple simulations over combinations and return aggregated results."""
+) -> Tuple[pd.DataFrame, str]:
+    """Run multiple simulations over combinations and return aggregated results plus sweep dir."""
     ensure_results_folder()
-    # Create a dedicated folder for this sweep
     sweep_dir = get_next_run_folder()
     records = []
 
-    global num_bees, num_plants  # use your global parameters
+    global num_bees, num_plants
 
     for plants in plants_list:
         for bees in bees_list:
             for r in range(repeats):
-                # set globals for this run
                 num_plants = plants
                 num_bees = bees
 
-                # run once
                 _, _, metrics = run_simulation(
                     num_steps=steps,
                     visualize_interval=visualize_interval,
                     print_metrics=False,
                 )
 
-                # save JSON per run
                 run_name = f"sweep_{bees}bees_{plants}plants_r{r}"
                 save_run_results(metrics, run_name=run_name, base_dir=sweep_dir)
 
-                # collect a flat record
                 records.append(
                     {
                         "bees": bees,
@@ -652,16 +603,15 @@ def run_param_sweep(
                 )
 
     df = pd.DataFrame.from_records(records)
-    # Save a CSV snapshot of this sweep
     sweep_csv = os.path.join(sweep_dir, "param_sweep.csv")
     df.to_csv(sweep_csv, index=False)
     print(f"✓ Parameter sweep saved: {sweep_csv}")
 
-    return df
+    return df, sweep_dir
 
 
-def plot_param_sweep(df: pd.DataFrame) -> None:
-    """Create summary plots across parameter combinations."""
+def plot_param_sweep(df: pd.DataFrame, base_dir: Optional[str] = None) -> None:
+    """Create summary plots across parameter combinations and optionally save to base_dir."""
     if df.empty:
         print("No data to plot.")
         return
@@ -725,7 +675,53 @@ def plot_param_sweep(df: pd.DataFrame) -> None:
     axes[1, 1].legend(fontsize=8)
 
     plt.tight_layout()
+
+    if base_dir:
+        os.makedirs(base_dir, exist_ok=True)
+        fig_path = os.path.join(base_dir, "param_sweep_plot.png")
+        plt.savefig(fig_path, dpi=150, bbox_inches="tight")
+        print(f"✓ Figure saved to: {fig_path}")
+
     plt.show()
+
+
+def main() -> None:
+    """Main entry point."""
+    # Define parameter grid
+    bees_list = [20, 30, 40, 60, 70, 80, 120, 160, 200]
+    plants_list = [10, 25, 50, 75, 100]
+
+    # Run sweep
+    df, sweep_dir = run_param_sweep(
+        bees_list=bees_list,
+        plants_list=plants_list,
+        steps=max_steps,
+        visualize_interval=0,  # disable per-run prints for speed
+        repeats=10,  # averaging over multiple runs to smooth randomness
+    )
+
+    # Update summary CSV within the latest sweep folder as well as top-level
+    # Top-level summary remains for all-time results; per-sweep summary lives inside runN
+    # Determine latest sweep dir for convenience
+    run_dirs = [
+        d
+        for d in os.listdir(RESULTS_FOLDER)
+        if os.path.isdir(os.path.join(RESULTS_FOLDER, d)) and d.startswith("run")
+    ]
+    if run_dirs:
+        indices = []
+        for name in run_dirs:
+            try:
+                indices.append((int(name[3:]), name))
+            except ValueError:
+                continue
+        if indices:
+            latest_name = max(indices)[1]
+            create_results_summary(os.path.join(RESULTS_FOLDER, latest_name))
+    create_results_summary()
+
+    # Plot
+    plot_param_sweep(df, base_dir=sweep_dir)
 
 
 if __name__ == "__main__":
