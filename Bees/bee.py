@@ -49,11 +49,18 @@ class Bee:
         self.y = y
 
     def collect_pollen(self, plant: Plant) -> bool:
-        """Bee collects pollen."""
-        if not self.has_pollen and plant.has_pollen():
-            amount = plant.collect_pollen(self.pollen_capacity)
-            self.pollen_amount = amount
-            self.has_pollen = True
+        """Bee collects up to remaining capacity from a plant."""
+        if not plant.has_pollen():
+            return False
+
+        remaining = max(self.pollen_capacity - self.pollen_amount, 0.0)
+        if remaining <= 0:
+            return False
+
+        amount = plant.collect_pollen(remaining)
+        if amount > 0:
+            self.pollen_amount += amount
+            self.has_pollen = self.pollen_amount > 0
             self.last_plant_visited = plant
             self.total_pollen_collected += amount
             return True
@@ -186,3 +193,7 @@ class Bee:
         elif self.y > max_y:
             self.y = max_y
             self.orientation = -self.orientation
+
+    def is_full(self) -> bool:
+        """Return True if the bee has reached or exceeded capacity."""
+        return self.pollen_amount >= self.pollen_capacity

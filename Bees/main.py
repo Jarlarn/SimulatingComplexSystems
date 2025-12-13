@@ -17,7 +17,7 @@ L: int = 500  # 1 Acre
 min_length: int = -L
 max_length: int = L
 num_plants: int = 10
-num_hives: int = 1
+num_hives: int = 2
 v_mean = 24  # Avg bee speed
 v_std = 1.0
 
@@ -296,27 +296,21 @@ def simulation_step(
     """Execute one step of the simulation."""
 
     for bee in bees:
-        if bee.has_pollen:
-            # Return to hive with pollen
+        if bee.is_full():
+            # Return to hive when full
             bee.move_towards_target(bee.hive_x, bee.hive_y, dt)
-
-            # Deposit pollen if at hive
             if bee.is_at_hive():
                 bee.deposit_pollen()
-                bee.last_plant_visited = None  # Reset memory
+                bee.last_plant_visited = None  # Reset memory after deposit
         else:
-            # Look for plants
+            # Forage even if carrying some pollen (not yet full)
             nearby_plants = bee.detect_plants(plants)
 
             if nearby_plants:
-                # Move towards closest plant with pollen
                 target_plant, dist = nearby_plants[0]
-
                 if dist < bee.collection_radius:
-                    # Collect pollen
                     bee.collect_pollen(target_plant)
                 else:
-                    # Move towards plant
                     bee.move_towards_target(target_plant.x, target_plant.y, dt)
             else:
                 # Explore with Lévy walk and plant attraction
@@ -688,8 +682,10 @@ def plot_param_sweep(df: pd.DataFrame, base_dir: Optional[str] = None) -> None:
 def main() -> None:
     """Main entry point."""
     # Define parameter grid
-    bees_list = [20, 30, 40, 60, 70, 80, 120, 160, 200]
-    plants_list = [10, 25, 50, 75, 100]
+    # bees_list = [20, 30, 40, 60, 70, 80, 120, 160, 200]
+    bees_list = [100, 200, 400]
+    # plants_list = [10, 25, 50, 75, 100]
+    plants_list = [10, 20]
 
     # Run sweep
     df, sweep_dir = run_param_sweep(
@@ -697,7 +693,7 @@ def main() -> None:
         plants_list=plants_list,
         steps=max_steps,
         visualize_interval=0,  # disable per-run prints for speed
-        repeats=10,  # averaging over multiple runs to smooth randomness
+        repeats=2,  # averaging over multiple runs to smooth randomness
     )
 
     # Update summary CSV within the latest sweep folder as well as top-level
