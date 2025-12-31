@@ -4,10 +4,19 @@ import pandas as pd
 from bee import Bee
 from plant import Plant
 from typing import List, Tuple, Dict, Optional
-import matplotlib.animation as animation
 import json
 import os
 from datetime import datetime
+import matplotlib.pyplot as plt
+import matplotlib
+
+matplotlib.rcParams["font.size"] = 10
+matplotlib.rcParams["axes.labelsize"] = 10
+matplotlib.rcParams["axes.titlesize"] = 10
+matplotlib.rcParams["xtick.labelsize"] = 10
+matplotlib.rcParams["ytick.labelsize"] = 10
+matplotlib.rcParams["legend.fontsize"] = 10
+matplotlib.rcParams["figure.titlesize"] = 10
 
 # Each bee can visit 75 plants before reaching capacity.
 # Each plant holds 3 mg pollen
@@ -85,12 +94,10 @@ def save_run_results(
     if parameters is None:
         parameters = get_simulation_parameters()
 
-    # Generate run name with timestamp if not provided
     if run_name is None:
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         run_name = f"run_{timestamp}"
 
-    # Combine parameters and metrics
     result_data = {
         "timestamp": datetime.now().isoformat(),
         "run_name": run_name,
@@ -98,7 +105,6 @@ def save_run_results(
         "metrics": metrics,
     }
 
-    # Save as JSON
     target_dir = base_dir if base_dir else RESULTS_FOLDER
     os.makedirs(target_dir, exist_ok=True)
     filepath = os.path.join(target_dir, f"{run_name}.json")
@@ -119,14 +125,12 @@ def create_results_summary(base_dir: Optional[str] = None) -> str:
     target_dir = base_dir if base_dir else RESULTS_FOLDER
     summary_path = os.path.join(target_dir, "summary.csv")
 
-    # Collect all run files
     run_files = [f for f in os.listdir(target_dir) if f.endswith(".json")]
 
     if not run_files:
         print("No results to summarize")
         return summary_path
 
-    # Extract data from each run
     summary_data = []
     for filename in sorted(run_files):
         filepath = os.path.join(target_dir, filename)
@@ -134,13 +138,11 @@ def create_results_summary(base_dir: Optional[str] = None) -> str:
             with open(filepath, "r") as f:
                 data = json.load(f)
 
-            # Flatten parameters and metrics for CSV
             row = {
                 "run_name": data.get("run_name", ""),
                 "timestamp": data.get("timestamp", ""),
             }
 
-            # Add parameters
             if "parameters" in data:
                 for key, value in data["parameters"].items():
                     if isinstance(value, dict):
@@ -149,7 +151,6 @@ def create_results_summary(base_dir: Optional[str] = None) -> str:
                     else:
                         row[f"param_{key}"] = value
 
-            # Add metrics
             if "metrics" in data:
                 for key, value in data["metrics"].items():
                     row[f"metric_{key}"] = value
@@ -160,7 +161,6 @@ def create_results_summary(base_dir: Optional[str] = None) -> str:
             continue
 
     if summary_data:
-        # Write CSV
         import csv
 
         with open(summary_path, "w", newline="") as f:
@@ -266,10 +266,8 @@ def create_bees(
     """Create Bee objects starting at hives."""
     bees = []
     for i in range(num_bees):
-        # Assign bees to hives (distribute evenly)
         hive = beehives[i % len(beehives)]
 
-        # Start near the hive with some random offset
         offset = np.random.uniform(-20, 20, 2)
 
         bees.append(
@@ -297,13 +295,11 @@ def simulation_step(
 
     for bee in bees:
         if bee.is_full():
-            # Return to hive when full
             bee.move_towards_target(bee.hive_x, bee.hive_y, dt)
             if bee.is_at_hive():
                 bee.deposit_pollen()
-                bee.last_plant_visited = None  # Reset memory after deposit
+                bee.last_plant_visited = None
         else:
-            # Forage even if carrying some pollen (not yet full)
             nearby_plants = bee.detect_plants(plants)
 
             if nearby_plants:
@@ -313,10 +309,8 @@ def simulation_step(
                 else:
                     bee.move_towards_target(target_plant.x, target_plant.y, dt)
             else:
-                # Explore with Lévy walk and plant attraction
                 bee.move_with_attraction(plants, dt, attraction_strength)
 
-        # Keep bee within boundaries
         bee.enforce_boundaries(min_length, max_length, min_length, max_length)
 
 
@@ -366,11 +360,11 @@ def plot_simulation(
     min_length: int,
     max_length: int,
     step: int = 0,
+    trajectory: Optional[List[Tuple[float, float]]] = None,
 ) -> None:
-    """Plot the simulation box, plants, beehives, bees, and their velocity vectors."""
+    """Plot the simulation box, plants, beehives, bees, their velocity vectors, and optional trajectory."""
     plt.figure(figsize=(12, 10))
 
-    # Plot boundary
     plt.plot(
         [min_length, max_length, max_length, min_length, min_length],
         [min_length, min_length, max_length, max_length, min_length],
@@ -378,18 +372,43 @@ def plot_simulation(
         linewidth=2,
     )
 
-    # Plot plants with size based on pollen level
+    if trajectory and len(trajectory) > 1:
+        traj_x = [pos[0] for pos in trajectory]
+        traj_y = [pos[1] for pos in trajectory]
+        plt.plot(traj_x, traj_y, "b-", alpha=0.3, linewidth=1.5, label="Bee trajectory")
+        plt.scatter(
+            [traj_x[0]],
+            [traj_y[0]],
+            c="cyan",
+            s=100,
+            marker="o",
+            edgecolors="black",
+            linewidth=2,
+            zorder=5,
+            label="Trajectory start",
+        )
+        plt.scatter(
+            [traj_x[-1]],
+            [traj_y[-1]],
+            c="blue",
+            s=100,
+            marker="s",
+            edgecolors="black",
+            linewidth=2,
+            zorder=5,
+            label="Trajectory end",
+        )
+
     plant_x = [plant.x for plant in plants]
     plant_y = [plant.y for plant in plants]
     plant_pollen = [plant.get_pollen_ratio() for plant in plants]
 
-    # Color plants by pollen level
     scatter_plants = plt.scatter(
         plant_x,
         plant_y,
         c=plant_pollen,
-        s=100,
-        marker=".",
+        s=150,
+        marker="^",
         cmap="Greens",
         vmin=0,
         vmax=1,
@@ -399,7 +418,6 @@ def plot_simulation(
     )
     plt.colorbar(scatter_plants, label="Pollen Level", shrink=0.8)
 
-    # Plot beehives
     beehive_x = [hive[0] for hive in beehives]
     beehive_y = [hive[1] for hive in beehives]
     plt.scatter(
@@ -413,13 +431,12 @@ def plot_simulation(
         linewidth=2,
     )
 
-    # Plot bees - different colors for those with/without pollen
-    bees_with_pollen = [bee for bee in bees if bee.has_pollen]
-    bees_without_pollen = [bee for bee in bees if not bee.has_pollen]
+    bees_returning = [bee for bee in bees if bee.is_full()]
+    bees_foraging = [bee for bee in bees if not bee.is_full()]
 
-    if bees_without_pollen:
-        bee_x = [bee.x for bee in bees_without_pollen]
-        bee_y = [bee.y for bee in bees_without_pollen]
+    if bees_foraging:
+        bee_x = [bee.x for bee in bees_foraging]
+        bee_y = [bee.y for bee in bees_foraging]
         plt.scatter(
             bee_x,
             bee_y,
@@ -431,9 +448,8 @@ def plot_simulation(
             linewidth=0.5,
         )
 
-        # Plot velocity vectors
-        bee_u = [bee.velocity * np.cos(bee.orientation) for bee in bees_without_pollen]
-        bee_v = [bee.velocity * np.sin(bee.orientation) for bee in bees_without_pollen]
+        bee_u = [bee.velocity * np.cos(bee.orientation) for bee in bees_foraging]
+        bee_v = [bee.velocity * np.sin(bee.orientation) for bee in bees_foraging]
         plt.quiver(
             bee_x,
             bee_y,
@@ -447,9 +463,9 @@ def plot_simulation(
             alpha=0.6,
         )
 
-    if bees_with_pollen:
-        bee_x = [bee.x for bee in bees_with_pollen]
-        bee_y = [bee.y for bee in bees_with_pollen]
+    if bees_returning:
+        bee_x = [bee.x for bee in bees_returning]
+        bee_y = [bee.y for bee in bees_returning]
         plt.scatter(
             bee_x,
             bee_y,
@@ -457,13 +473,12 @@ def plot_simulation(
             s=40,
             marker="h",
             edgecolors="black",
-            label="Bee (with pollen)",
+            label="Bee (returning)",
             linewidth=0.5,
         )
 
-        # Plot velocity vectors
-        bee_u = [bee.velocity * np.cos(bee.orientation) for bee in bees_with_pollen]
-        bee_v = [bee.velocity * np.sin(bee.orientation) for bee in bees_with_pollen]
+        bee_u = [bee.velocity * np.cos(bee.orientation) for bee in bees_returning]
+        bee_v = [bee.velocity * np.sin(bee.orientation) for bee in bees_returning]
         plt.quiver(
             bee_x,
             bee_y,
@@ -492,13 +507,21 @@ def run_simulation(
     num_steps: int = 1000,
     visualize_interval: int = 100,
     print_metrics: bool = True,
-) -> Tuple[List[Bee], List[Plant], Dict]:
+    track_trajectory: bool = False,
+) -> Tuple[List[Bee], List[Plant], Dict, Optional[List[Tuple[float, float]]]]:
     """Run the complete simulation."""
 
-    # Initialize
     plants = create_plants(num_plants, min_length, max_length)
     beehives = create_beehives(num_hives, min_length, max_length)
     bees = create_bees(num_bees, beehives, v_mean, v_std)
+
+    tracked_bee = None
+    trajectory = []
+    if track_trajectory and bees:
+        tracked_bee = np.random.choice(bees)
+        print(
+            f"Tracking bee at initial position ({tracked_bee.x:.1f}, {tracked_bee.y:.1f})"
+        )
 
     print(f"Starting simulation with {num_bees} bees and {num_plants} plants...")
     print(
@@ -506,11 +529,12 @@ def run_simulation(
     )
     print(f"Running {num_steps} steps with dt={dt}\n")
 
-    # Run simulation
     for step in range(num_steps):
         simulation_step(bees, plants, dt, min_length, max_length, attraction_strength)
 
-        # Visualize at intervals
+        if tracked_bee:
+            trajectory.append((tracked_bee.x, tracked_bee.y))
+
         if visualize_interval and step % visualize_interval == 0:
             print(f"Step {step}/{num_steps}")
             if step > 0:  # Skip initial state
@@ -522,7 +546,6 @@ def run_simulation(
                 )
                 print()
 
-    # Final metrics
     metrics = calculate_pollination_metrics(bees, plants, num_steps)
 
     if print_metrics:
@@ -546,7 +569,7 @@ def run_simulation(
         print(f"  Pollen per bee per step: {metrics['pollen_per_bee_per_step']:.4f}")
         print("=" * 60 + "\n")
 
-    return bees, plants, metrics
+    return bees, plants, metrics, trajectory if track_trajectory else None
 
 
 def run_param_sweep(
@@ -569,10 +592,11 @@ def run_param_sweep(
                 num_plants = plants
                 num_bees = bees
 
-                _, _, metrics = run_simulation(
+                _, _, metrics, _ = run_simulation(
                     num_steps=steps,
                     visualize_interval=visualize_interval,
                     print_metrics=False,
+                    track_trajectory=False,
                 )
 
                 run_name = f"sweep_{bees}bees_{plants}plants_r{r}"
@@ -610,10 +634,8 @@ def plot_param_sweep(df: pd.DataFrame, base_dir: Optional[str] = None) -> None:
         print("No data to plot.")
         return
 
-    # Aggregate over repeats
     agg = df.groupby(["bees", "plants"], as_index=False).mean(numeric_only=True)
 
-    # Prepare pivot tables for heatmaps
     pivot_visit = agg.pivot(index="plants", columns="bees", values="visitation_rate")
     pivot_pollen = agg.pivot(
         index="plants", columns="bees", values="total_pollen_collected"
@@ -621,7 +643,6 @@ def plot_param_sweep(df: pd.DataFrame, base_dir: Optional[str] = None) -> None:
 
     fig, axes = plt.subplots(2, 2, figsize=(14, 10))
 
-    # Heatmap: Visitation rate
     im0 = axes[0, 0].imshow(
         pivot_visit.values, aspect="auto", cmap="viridis", vmin=0, vmax=1
     )
@@ -634,7 +655,6 @@ def plot_param_sweep(df: pd.DataFrame, base_dir: Optional[str] = None) -> None:
     axes[0, 0].set_yticklabels(pivot_visit.index)
     fig.colorbar(im0, ax=axes[0, 0], fraction=0.046, pad=0.04)
 
-    # Heatmap: Total pollen collected
     im1 = axes[0, 1].imshow(pivot_pollen.values, aspect="auto", cmap="magma")
     axes[0, 1].set_title("Total Pollen Collected")
     axes[0, 1].set_xlabel("Bees")
@@ -645,7 +665,6 @@ def plot_param_sweep(df: pd.DataFrame, base_dir: Optional[str] = None) -> None:
     axes[0, 1].set_yticklabels(pivot_pollen.index)
     fig.colorbar(im1, ax=axes[0, 1], fraction=0.046, pad=0.04)
 
-    # Line plot: Efficiency vs bees (per plants bucket)
     for plants_val in sorted(agg["plants"].unique()):
         sub = agg[agg["plants"] == plants_val].sort_values("bees")
         axes[1, 0].plot(
@@ -655,9 +674,8 @@ def plot_param_sweep(df: pd.DataFrame, base_dir: Optional[str] = None) -> None:
     axes[1, 0].set_xlabel("Bees")
     axes[1, 0].set_ylabel("Efficiency")
     axes[1, 0].grid(True, alpha=0.3)
-    axes[1, 0].legend(fontsize=8)
+    axes[1, 0].legend(fontsize=10)
 
-    # Line plot: Visitation vs plants (per bees bucket)
     for bees_val in sorted(agg["bees"].unique()):
         sub = agg[agg["bees"] == bees_val].sort_values("plants")
         axes[1, 1].plot(sub["plants"], sub["visitation_rate"], label=f"bees={bees_val}")
@@ -666,39 +684,62 @@ def plot_param_sweep(df: pd.DataFrame, base_dir: Optional[str] = None) -> None:
     axes[1, 1].set_ylabel("Visitation rate")
     axes[1, 1].set_ylim(0, 1)
     axes[1, 1].grid(True, alpha=0.3)
-    axes[1, 1].legend(fontsize=8)
+    axes[1, 1].legend(fontsize=10)
 
     plt.tight_layout()
 
     if base_dir:
         os.makedirs(base_dir, exist_ok=True)
         fig_path = os.path.join(base_dir, "param_sweep_plot.png")
-        plt.savefig(fig_path, dpi=150, bbox_inches="tight")
+        plt.savefig(fig_path, dpi=800, bbox_inches="tight")
         print(f"✓ Figure saved to: {fig_path}")
 
     plt.show()
 
 
+def run_single_visualization() -> None:
+    """Run a single simulation with trajectory tracking and visualization."""
+    global num_bees, num_plants
+    num_bees = 200
+    num_plants = 100
+
+    bees, plants, metrics, trajectory = run_simulation(
+        num_steps=max_steps,
+        visualize_interval=200,
+        print_metrics=True,
+        track_trajectory=True,
+    )
+
+    beehives = list(set([(bee.hive_x, bee.hive_y) for bee in bees]))
+
+    plot_simulation(
+        plants,
+        beehives,
+        bees,
+        min_length,
+        max_length,
+        step=max_steps,
+        trajectory=trajectory,
+    )
+    plt.show()
+    # plot_levy_empirical(bees, base_dir="Figures")
+
+
 def main() -> None:
     """Main entry point."""
-    # Define parameter grid
-    # bees_list = [20, 30, 40, 60, 70, 80, 120, 160, 200]
-    bees_list = [100, 200, 400]
-    # plants_list = [10, 25, 50, 75, 100]
-    plants_list = [10, 20]
+    # run_single_visualization()
 
-    # Run sweep
+    bees_list = [20, 30, 40, 60, 70, 80, 120, 160, 200]
+    plants_list = [10, 25, 50, 75, 100]
+
     df, sweep_dir = run_param_sweep(
         bees_list=bees_list,
         plants_list=plants_list,
         steps=max_steps,
-        visualize_interval=0,  # disable per-run prints for speed
-        repeats=2,  # averaging over multiple runs to smooth randomness
+        visualize_interval=0,
+        repeats=10,
     )
 
-    # Update summary CSV within the latest sweep folder as well as top-level
-    # Top-level summary remains for all-time results; per-sweep summary lives inside runN
-    # Determine latest sweep dir for convenience
     run_dirs = [
         d
         for d in os.listdir(RESULTS_FOLDER)
@@ -716,9 +757,60 @@ def main() -> None:
             create_results_summary(os.path.join(RESULTS_FOLDER, latest_name))
     create_results_summary()
 
-    # Plot
     plot_param_sweep(df, base_dir=sweep_dir)
 
 
 if __name__ == "__main__":
     main()
+
+
+def plot_levy_empirical(bees: List[Bee], base_dir: str = "Figures") -> None:
+    import os
+
+    os.makedirs(base_dir, exist_ok=True)
+
+    steps = np.concatenate(
+        [
+            np.array(b.levy_steps, dtype=float)
+            for b in bees
+            if getattr(b, "levy_steps", None)
+        ]
+    )
+    if steps.size == 0:
+        print("No Lévy steps recorded; nothing to plot.")
+        return
+
+    steps = steps[steps > 0]
+    n = steps.size
+    smin, smax = steps.min(), steps.max()
+
+    nbins = 50
+    bins = np.logspace(np.log10(smin), np.log10(smax), nbins)
+
+    fig, axes = plt.subplots(1, 2, figsize=(12, 5))
+
+    # Empirical PDF (histogram, density normalized)
+    axes[0].hist(steps, bins=bins, density=True, alpha=0.6, color="tab:blue")
+    axes[0].set_xscale("log")
+    axes[0].set_yscale("log")
+    axes[0].set_title("Empirical Lévy Step PDF")
+    axes[0].set_xlabel("Step length")
+    axes[0].set_ylabel("Density")
+    axes[0].grid(True, which="both", alpha=0.3)
+
+    # Empirical CCDF (survival function)
+    s_sorted = np.sort(steps)
+    ccdf = 1.0 - (np.arange(1, n + 1) / n)
+    axes[1].plot(s_sorted, ccdf, color="tab:red")
+    axes[1].set_xscale("log")
+    axes[1].set_yscale("log")
+    axes[1].set_title("Empirical Lévy Step CCDF")
+    axes[1].set_xlabel("Step length")
+    axes[1].set_ylabel("P(L > ℓ)")
+    axes[1].grid(True, which="both", alpha=0.3)
+
+    plt.tight_layout()
+    out_path = os.path.join(base_dir, "levy_empirical.png")
+    plt.savefig(out_path, dpi=300, bbox_inches="tight")
+    print(f"✓ Saved empirical Lévy distribution to: {out_path}")
+    plt.show()

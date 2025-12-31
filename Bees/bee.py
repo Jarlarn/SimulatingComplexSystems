@@ -28,13 +28,13 @@ class Bee:
         self.pollen_amount: float = 0.0
         self.pollen_capacity: float = 35.0  # mg
 
-        # Memory of last plant visited
         self.last_plant_visited: Optional[object] = None
 
         # Statistics
         self.trips_completed: int = 0
         self.total_pollen_collected: float = 0.0
         self.distance_traveled: float = 0.0
+        self.levy_steps: list[float] = []
 
     def move(self, dx: float, dy: float) -> None:
         """Move the bee by dx and dy."""
@@ -80,7 +80,6 @@ class Bee:
         """Find plants within detection range"""
         nearby = []
         for plant in plants:
-            # Don't return to the same plant we just visited
             if plant == self.last_plant_visited:
                 continue
 
@@ -105,10 +104,8 @@ class Bee:
         dist = np.sqrt(dx**2 + dy**2)
 
         if dist > 0:
-            # Update orientation to face target
             self.orientation = np.arctan2(dy, dx)
 
-            # Move towards target
             step = min(self.velocity * dt, dist)
             self.x += (dx / dist) * step
             self.y += (dy / dist) * step
@@ -116,7 +113,6 @@ class Bee:
 
     def levy_walk(self, dt):
         """Lévy flight movement pattern"""
-        # Short steps frequently, long steps rarely
         step_length = np.random.pareto(1.5) * self.velocity * dt
         self.orientation += np.random.normal(0, 0.3)  # Add turning
         self.x += step_length * np.cos(self.orientation)
@@ -126,10 +122,9 @@ class Bee:
         self, plants: List, dt: float, attraction_strength: float = 0.3
     ) -> None:
         """Move with Lévy walk but influenced by nearby plant attraction."""
-        # Base Lévy movement
         step_length = np.random.pareto(1.5) * self.velocity * dt
+        self.levy_steps.append(step_length)
 
-        # Calculate attraction from nearby plants
         attraction_x = 0.0
         attraction_y = 0.0
 
@@ -141,34 +136,26 @@ class Bee:
             dy = plant.y - self.y
             dist = np.sqrt(dx**2 + dy**2)
 
-            # Plants within their attraction radius influence the bee
             if dist < plant.attraction_radius and dist > 0:
-                # Attraction falls off with distance
                 attraction_force = (1 - dist / plant.attraction_radius) ** 2
                 attraction_x += (dx / dist) * attraction_force
                 attraction_y += (dy / dist) * attraction_force
 
-        # Normalize attraction vector
         attraction_magnitude = np.sqrt(attraction_x**2 + attraction_y**2)
         if attraction_magnitude > 0:
             attraction_x /= attraction_magnitude
             attraction_y /= attraction_magnitude
 
-            # Blend random walk with attraction
             target_orientation = np.arctan2(attraction_y, attraction_x)
 
-            # Weighted average between current orientation and attraction
             self.orientation = (
                 1 - attraction_strength
             ) * self.orientation + attraction_strength * target_orientation
 
-            # Add some random noise
             self.orientation += np.random.normal(0, 0.2)
         else:
-            # Pure random walk if no attraction
             self.orientation += np.random.normal(0, 0.3)
 
-        # Move in the resulting direction
         dx = step_length * np.cos(self.orientation)
         dy = step_length * np.sin(self.orientation)
 
